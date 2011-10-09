@@ -333,10 +333,11 @@ static NSString* kSDKVersion = @"2";
     // encounters a UIWebViewDelegate error. This should not be treated
     // as a cancel.
     NSString *errorCode = [params valueForKey:@"error_code"];
+    NSString *errorMessage = [params valueForKey:@"error_msg"];
 
     BOOL userDidCancel =
       !errorCode && (!errorReason || [errorReason isEqualToString:@"access_denied"]);
-    [self fbDialogNotLogin:userDidCancel];
+    [self fbDialogNotLogin:userDidCancel errorMessage:errorMessage];
     return YES;
   }
 
@@ -639,9 +640,10 @@ static NSString* kSDKVersion = @"2";
 /**
  * Did not login call the not login delegate
  */
-- (void)fbDialogNotLogin:(BOOL)cancelled {
-  if ([self.sessionDelegate respondsToSelector:@selector(fbDidNotLogin:)]) {
-    [_sessionDelegate fbDidNotLogin:cancelled];
+- (void)fbDialogNotLogin:(BOOL)cancelled errorMessage:(NSString*)errorMessage {
+  if ([self.sessionDelegate respondsToSelector:@selector(fbDidNotLogin:errorMessage:)]) {
+      [_sessionDelegate fbDidNotLogin:cancelled 
+                         errorMessage:errorMessage];
   }
 }
 
