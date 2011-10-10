@@ -103,7 +103,7 @@
 /**
  * Called when the user dismissed the dialog without logging in.
  */
-- (void)fbDidNotLogin:(BOOL)cancelled;
+- (void)fbDidNotLogin:(BOOL)cancelled errorMessage:(NSString*)errorMessage;
 
 /**
  * Called when the user logged out.
