@@ -17,6 +17,7 @@
 #import "FBLoginDialog.h"
 #import "FBRequest.h"
 
+@class FBFrictionlessRequestSettings;
 @protocol FBSessionDelegate;
 
 /**
@@ -25,33 +26,47 @@
  * and Graph APIs, and start user interface interactions (such as
  * pop-ups promoting for credentials, permissions, stream posts, etc.)
  */
-@interface Facebook : NSObject<FBLoginDialogDelegate>{
-  NSString* _accessToken;
-  NSDate* _expirationDate;
-  id<FBSessionDelegate> _sessionDelegate;
-  FBRequest* _request;
-  FBDialog* _loginDialog;
-  FBDialog* _fbDialog;
-  NSString* _appId;
-  NSString* _localAppId;
-  NSArray* _permissions;
+@interface Facebook : NSObject<FBLoginDialogDelegate,FBRequestDelegate>{
+    NSString* _accessToken;
+    NSDate* _expirationDate;
+    id<FBSessionDelegate> _sessionDelegate;
+    NSMutableSet* _requests;
+    FBDialog* _loginDialog;
+    FBDialog* _fbDialog;
+    NSString* _appId;
+    NSString* _urlSchemeSuffix;
+    NSArray* _permissions;
+    BOOL _isExtendingAccessToken;
+    FBRequest *_requestExtendingAccessToken;
+    NSDate* _lastAccessTokenUpdate;
+    FBFrictionlessRequestSettings* _frictionlessRequestSettings;
 }
 
 @property(nonatomic, copy) NSString* accessToken;
 @property(nonatomic, copy) NSDate* expirationDate;
 @property(nonatomic, assign) id<FBSessionDelegate> sessionDelegate;
-@property(nonatomic, copy) NSString* localAppId;
+@property(nonatomic, copy) NSString* urlSchemeSuffix;
+@property(nonatomic, readonly, getter=isFrictionlessRequestsEnabled) 
+    BOOL isFrictionlessRequestsEnabled;
 
-- (id)initWithAppId:(NSString *)app_id;
+- (id)initWithAppId:(NSString *)appId
+        andDelegate:(id<FBSessionDelegate>)delegate;
 
-- (void)authorize:(NSArray *)permissions
-         delegate:(id<FBSessionDelegate>)delegate;
+- (id)initWithAppId:(NSString *)appId
+    urlSchemeSuffix:(NSString *)urlSchemeSuffix
+        andDelegate:(id<FBSessionDelegate>)delegate;
 
-- (void)authorize:(NSArray *)permissions
-         delegate:(id<FBSessionDelegate>)delegate
-       localAppId:(NSString *)localAppId;
+- (void)authorize:(NSArray *)permissions;
+
+- (void)extendAccessToken;
+
+- (void)extendAccessTokenIfNeeded;
+
+- (BOOL)shouldExtendAccessToken;
 
 - (BOOL)handleOpenURL:(NSURL *)url;
+
+- (void)logout;
 
 - (void)logout:(id<FBSessionDelegate>)delegate;
 
@@ -84,6 +99,14 @@
 
 - (BOOL)isSessionValid;
 
+- (void)enableFrictionlessRequests;
+
+- (void)reloadFrictionlessRecipientCache;
+
+- (BOOL)isFrictionlessEnabledForRecipient:(id)fbid;
+
+- (BOOL)isFrictionlessEnabledForRecipients:(NSArray*)fbids;
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,8 +116,6 @@
  */
 @protocol FBSessionDelegate <NSObject>
 
-@optional
-
 /**
  * Called when the user successfully logged in.
  */
@@ -103,11 +124,30 @@
 /**
  * Called when the user dismissed the dialog without logging in.
  */
-- (void)fbDidNotLogin:(BOOL)cancelled errorMessage:(NSString*)errorMessage;
+- (void)fbDidNotLogin:(BOOL)cancelled;
+
+/**
+ * Called after the access token was extended. If your application has any
+ * references to the previous access token (for example, if your application
+ * stores the previous access token in persistent storage), your application
+ * should overwrite the old access token with the new one in this method.
+ * See extendAccessToken for more details.
+ */
+- (void)fbDidExtendToken:(NSString*)accessToken
+               expiresAt:(NSDate*)expiresAt;
 
 /**
  * Called when the user logged out.
  */
 - (void)fbDidLogout;
+
+/**
+ * Called when the current session has expired. This might happen when:
+ *  - the access token expired
+ *  - the app has been disabled
+ *  - the user revoked the app's permissions
+ *  - the user changed his or her password
+ */
+- (void)fbSessionInvalidated;
 
 @end
